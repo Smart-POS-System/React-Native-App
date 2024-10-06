@@ -1,13 +1,12 @@
 {
   "expo": {
-    "name": "Smart-POS-App",
-    "slug": "Smart-POS-App",
+    "name": "smart-pos-system",
+    "slug": "smart-pos-system",
     "version": "1.0.0",
     "orientation": "portrait",
     "icon": "./assets/icon.png",
-    "userInterfaceStyle": "light",
     "splash": {
-      "image": "./assets/splash.png",
+      "image": "./assets/icon.png",
       "resizeMode": "contain",
       "backgroundColor": "#ffffff"
     },
@@ -22,6 +21,14 @@
     },
     "web": {
       "favicon": "./assets/favicon.png"
-    }
+    },
+    "plugins": [
+      [
+        "expo-image-picker",
+        {
+          "cameraPermission": "Allow Smart POS System to access your camera"
+        }
+      ]
+    ]
   }
 }
