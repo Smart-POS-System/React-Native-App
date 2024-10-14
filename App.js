@@ -21,6 +21,19 @@ import Transaction from "./screens/Transactions";
 import NavigationBar from "./components/Navigation";
 import Profile from "./components/Profile";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
+import MyProfile from "./screens/MyProfile";
+import UpdatePasswordScreen from "./screens/PasswordUpdateScreen";
+import EmployeeDetails from "./screens/ViewUser";
+import UpdateUser from "./screens/UpdateUser";
+import Customers from "./screens/Customers";
+import ExpiryScreen from "./screens/ExpiryScreen";
+import ProductScreen from "./screens/ProductScreen";
+import AddProduct from "./screens/AddProductScreen";
+import ItemsScreen from "./screens/ItemsScreen";
+import AddItems from "./screens/AddItemScreen";
+import StockScreen from "./screens/StockScreen";
+import AddStock from "./screens/AddStock";
+import SimpleProfile from "./components/SimpleProfile";
 
 // Create the drawer and stack navigators
 const Stack = createNativeStackNavigator();
@@ -71,7 +84,13 @@ function DrawerNavigator() {
     >
       <Drawer.Screen name="Dashboard" component={Dashboard} />
       <Drawer.Screen name="All Employees" component={AllEmployees} />
+      <Drawer.Screen name="My Profile" component={MyProfile} />
       <Drawer.Screen name="Transactions" component={Transaction} />
+      <Drawer.Screen name="Customers" component={Customers} />
+      <Drawer.Screen name="Products" component={ProductScreen} />
+      <Drawer.Screen name="Sales Items" component={ItemsScreen} />
+      <Drawer.Screen name="Stock" component={StockScreen} />
+      <Drawer.Screen name="Expiry Information" component={ExpiryScreen} />
     </Drawer.Navigator>
   );
 }
@@ -94,6 +113,11 @@ function AuthenticatedStack() {
         headerStyle: { backgroundColor: "white" },
         headerTintColor: "black",
         contentStyle: { backgroundColor: "white" },
+        headerRight: () => (
+          <View style={{ paddingRight: 20 }}>
+            <SimpleProfile />
+          </View>
+        ),
       }}
     >
       <Stack.Screen
@@ -103,9 +127,15 @@ function AuthenticatedStack() {
           headerShown: false,
         }}
       />
-      <Stack.Screen name="CreateEmployee" component={CreateEmployee} />
+      <Stack.Screen name="Create Employee" component={CreateEmployee} />
       <Stack.Screen name="UserScreen" component={UserScreen} />
       <Stack.Screen name="ImagesPicker" component={ImagesPicker} />
+      <Stack.Screen name="Password Update" component={UpdatePasswordScreen} />
+      <Stack.Screen name="Employee Details" component={EmployeeDetails} />
+      <Stack.Screen name="Update Employee" component={UpdateUser} />
+      <Stack.Screen name="Add Product" component={AddProduct} />
+      <Stack.Screen name="Add Item" component={AddItems} />
+      <Stack.Screen name="Add Stock" component={AddStock} />
     </Stack.Navigator>
   );
 }
@@ -114,7 +144,7 @@ function AuthenticatedStack() {
 function Navigation() {
   const { loading, isAuthenticated } = useAuthentication();
   if (loading) {
-    return <SplashScreen />; // Show loading screen while checking authentication
+    return <SplashScreen />;
   }
 
   return (

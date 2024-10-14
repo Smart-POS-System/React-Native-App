@@ -64,14 +64,15 @@ function AuthProvider({ children }) {
   };
 
   function handleFullUser(user) {
+    // console.log("Full user set:", user);
     setFullUser(user);
   }
 
   const logOut = async () => {
     await AsyncStorage.removeItem("token");
+    setIsAuthenticated(false);
     setUser(null);
     setFullUser(null);
-    setIsAuthenticated(false);
     console.log("User logged out.");
   };
 

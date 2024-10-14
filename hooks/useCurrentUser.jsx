@@ -4,7 +4,7 @@ import { getUser } from "../api/api";
 
 export function useCurrentUser() {
   const { user } = useAuthentication();
-  console.log("user from ", user);
+  //console.log("user from ", user);
   const id = user.id;
   const { isLoading, data, error } = useQuery({
     queryKey: ["user", id],

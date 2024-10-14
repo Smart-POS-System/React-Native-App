@@ -3,13 +3,15 @@ import { StyleSheet, Text, View } from "react-native";
 import { SegmentedButtons } from "react-native-paper";
 import SalesList from "../components/SalesList";
 import PurchaseList from "../components/PurchaseList";
+import ExpiredList from "../components/ExpiredList";
+import ExpiringList from "../components/ExpiringList";
 
-function Transactions() {
-  const [value, setValue] = useState("sales");
+function ExpiryScreen() {
+  const [value, setValue] = useState("expired");
   return (
     <View style={styles.outerContainer}>
       <Text style={{ fontSize: 22, fontWeight: "bold", marginBottom: 20 }}>
-        Sales and Purchases
+        Expiration of Stocks
       </Text>
       <View style={styles.container}>
         <SegmentedButtons
@@ -17,26 +19,26 @@ function Transactions() {
           onValueChange={(value) => setValue(value)}
           buttons={[
             {
-              value: "sales",
-              label: "Sales",
-              icon: "cash",
+              value: "expired",
+              label: "Expired Stocks",
+              icon: "alert",
             },
             {
-              value: "purchases",
-              label: "Purchases",
-              icon: "cart",
+              value: "expiring",
+              label: "Expiring Stocks",
+              icon: "alert-circle",
             },
           ]}
-          style={{ width: "80%", fontSize: 12 }}
+          style={{ width: "100%", fontSize: 12 }}
         />
-        {value === "sales" && <SalesList />}
-        {value === "purchases" && <PurchaseList />}
+        {value === "expired" && <ExpiredList />}
+        {value === "expiring" && <ExpiringList />}
       </View>
     </View>
   );
 }
 
-export default Transactions;
+export default ExpiryScreen;
 
 const styles = StyleSheet.create({
   outerContainer: {

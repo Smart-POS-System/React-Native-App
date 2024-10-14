@@ -10,12 +10,12 @@ function useLogout() {
   const { isLoading, mutate: handleLogoutUser } = useMutation({
     mutationFn: logoutUser,
     onSuccess: () => {
-      logOut();
-      // navigation.navigate("Login");
+      //  navigation.navigate("Login");
       Toast.show({
         type: "success",
         text1: "Successfully logged out",
       });
+      logOut();
     },
     onError: (error) => {
       Toast.show({
