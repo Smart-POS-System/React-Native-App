@@ -16,10 +16,7 @@ const SplashScreen = ({ navigation }) => {
   }, [navigation]);
 
   return (
-    <LinearGradient
-      colors={["#3131f0", "#ADD8E6"]} // Dark blue to very light blue
-      style={styles.background}
-    >
+    <LinearGradient colors={["#3131f0", "#ADD8E6"]} style={styles.background}>
       <View style={styles.container}>
         <LottieView
           style={{ width: 300, height: 300 }}

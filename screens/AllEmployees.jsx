@@ -8,7 +8,6 @@ import {
 } from "react-native";
 import { useNavigation } from "@react-navigation/native";
 import { users } from "../helpers/users"; // Assuming you have this file for mock data
-import { Picker } from "@react-native-picker/picker";
 import {
   Text,
   TextInput,
@@ -21,15 +20,13 @@ import {
   List,
 } from "react-native-paper";
 import { useAuthentication } from "../contexts/authContext";
+import LottieView from "lottie-react-native";
 
 export default function AllUsers() {
-  const [limit, setLimit] = useState(10);
   const [searchText, setSearchText] = useState("");
   const [role, setRole] = useState("All Roles"); // State to store selected role
-  const [filteredUsers, setFilteredUsers] = useState([]); // State to store filtered users
+  const [filteredUsers, setFilteredUsers] = useState(users); // Initial users list to start with full list
   const { navigate } = useNavigation();
-  const [currentPage, setCurrentPage] = useState(1);
-  const total = users.length;
   const { user } = useAuthentication();
   const [visible, setVisible] = useState(false);
   const roles = [
@@ -50,29 +47,28 @@ export default function AllUsers() {
     setRole(role);
     hideMenu();
   };
+
   // Filter the users based on searchText and role
   useEffect(() => {
     let filtered = users;
 
-    // Filter by name
+    // Filter by name if searchText is not empty
     if (searchText) {
       filtered = filtered.filter((user) =>
         user.name.toLowerCase().includes(searchText.toLowerCase())
       );
     }
 
-    // Filter by role if selected
-    if (role && role !== "") {
+    // Filter by role if a role is selected
+    if (role !== "All Roles") {
       filtered = filtered.filter((user) => user.role === role);
     }
-    if (role === "All Roles") {
-      filtered = users;
-    }
+
     setFilteredUsers(filtered); // Update the filtered users list
   }, [searchText, role]);
 
   function handleButtonClick() {
-    navigate("CreateEmployee");
+    navigate("Create Employee");
   }
 
   if (!users.length) {
@@ -94,29 +90,11 @@ export default function AllUsers() {
           onChangeText={setSearchText}
           style={styles.searchInput}
           left={<TextInput.Icon icon="account-search" />}
+          theme={{ roundness: 25, height: 40 }}
         />
       </View>
 
-      {/* Search by Role
-      <View style={styles.searchContainer}>
-        <Text variant="labelLarge" style={styles.searchLabel}>
-          Search Employee by Role
-        </Text>
-        <Picker
-          selectedValue={role}
-          style={styles.picker}
-          onValueChange={(itemValue) => {
-            setRole(itemValue);
-          }}
-        >
-          <Picker.Item label="All Roles" value="All Roles" />
-          <Picker.Item label="Regional Manager" value="Regional Manager" />
-          <Picker.Item label="Inventory Manager" value="Inventory Manager" />
-          <Picker.Item label="Store Manager" value="Store Manager" />
-          <Picker.Item label="Cashier" value="Cashier" />
-        </Picker>
-      </View> */}
-
+      {/* Role Selection Button and Modal */}
       <View style={styles.roleContainer}>
         <Text style={styles.label}>Search Employee by Role</Text>
         <Button mode="outlined" onPress={showMenu} style={styles.button}>
@@ -155,17 +133,23 @@ export default function AllUsers() {
       </Button>
 
       {/* List of users */}
-      <FlatList
-        data={filteredUsers}
-        renderItem={({ item }) => <UserItem userData={item} />}
-        keyExtractor={(item) => item.employee_id.toString()}
-        onEndReachedThreshold={0.5}
-        ListFooterComponent={() =>
-          currentPage * limit < total ? (
-            <ActivityIndicator size="small" />
-          ) : null
-        }
-      />
+
+      {filteredUsers.length > 0 ? (
+        <FlatList
+          data={filteredUsers}
+          renderItem={({ item }) => <UserItem userData={item} />}
+          keyExtractor={(item) => item.employee_id.toString()}
+        />
+      ) : (
+        <View style={styles.lottieContainer}>
+          <LottieView
+            style={{ width: 250, height: 250 }}
+            source={require("../assets/no-results.json")}
+            autoPlay
+            loop={true}
+          />
+        </View>
+      )}
     </View>
   );
 }
@@ -177,7 +161,7 @@ function UserItem({ userData }) {
   const theme = useTheme();
 
   function handleViewUser() {
-    navigate("UserScreen", { id: employee_id });
+    navigate("Employee Details", { id: employee_id });
   }
 
   return (
@@ -248,13 +232,6 @@ const styles = StyleSheet.create({
   searchInput: {
     marginBottom: 0,
   },
-  picker: {
-    height: 50,
-    width: "100%",
-    marginTop: 5,
-    borderColor: "#fff",
-    backgroundColor: "#f5f3f3",
-  },
   addButton: {
     marginBottom: 20,
   },
@@ -268,5 +245,10 @@ const styles = StyleSheet.create({
   },
   inactiveCard: {
     backgroundColor: "#f4f4f4",
+  },
+  lottieContainer: {
+    flex: 1,
+    alignItems: "center",
+    justifyContent: "center",
   },
 });

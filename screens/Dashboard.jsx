@@ -4,12 +4,9 @@ import SalesChart from "../components/SalesAndPurchaseChart";
 import { Ionicons } from "@expo/vector-icons";
 import { Button } from "react-native-paper";
 import useLogout from "../hooks/useLogout";
+import TopProducts from "../components/TopProducts";
 
 function Dashboard() {
-  const { isLoading, handleLogoutUser } = useLogout();
-  function handleLogout() {
-    handleLogoutUser();
-  }
   return (
     <ScrollView>
       <View style={styles.container}>
@@ -18,8 +15,8 @@ function Dashboard() {
           Sales and Income Overview of this week
         </Text>
         <DashboardCards />
-        <Button onPress={handleLogout}>Log out</Button>
-        {/* <SalesChart /> */}
+        <SalesChart />
+        <TopProducts />
       </View>
     </ScrollView>
   );
