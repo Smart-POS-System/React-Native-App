@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useState, useEffect } from "react";
 import {
   View,
   StyleSheet,
@@ -18,6 +18,7 @@ import {
 } from "react-native-paper";
 import ImagesPicker from "../screens/ImagePicker";
 import { useAuthentication } from "../contexts/authContext";
+import { updateUser, uploadImage } from "../api/api";
 
 function UserForm({ employee = {} }) {
   const {
@@ -27,7 +28,14 @@ function UserForm({ employee = {} }) {
     reset,
   } = useForm({
     mode: "onChange",
+    defaultValues: {
+      name: employee?.name || "",
+      role: employee?.role || "",
+      email: employee?.email || "",
+      mobile: employee?.mobile || "",
+    },
   });
+
   const [imageFile, setImageFile] = useState(
     employee?.image ? { uri: employee.image } : null
   );
@@ -50,27 +58,50 @@ function UserForm({ employee = {} }) {
 
   const [selectedRole, setSelectedRole] = useState(employee?.role || "");
 
+  // Reset the form with employee data when employee object changes
+  useEffect(() => {
+    reset({
+      name: employee?.name || "",
+      role: employee?.role || "",
+      email: employee?.email || "",
+      mobile: employee?.mobile || "",
+    });
+    setSelectedRole(employee?.role || "");
+    setImageFile(employee?.image ? { uri: employee.image } : null);
+  }, [employee, reset]);
+
   const handleClear = () => {
     reset({
       name: "",
       role: "",
       email: "",
-      phone: "",
+      mobile: "",
     });
     setImageFile(null);
     setSelectedRole("");
   };
 
-  const onSubmit = (data) => {
-    const formattedPhoneNumber = data.phone.padStart(10, "0").slice(0, 10);
+  const onSubmit = async (data) => {
+    const formattedPhoneNumber = data.mobile.padStart(10, "0").slice(0, 10);
     const newUser = {
       ...data,
-      phone: formattedPhoneNumber,
-      image: imageFile,
+      mobile: formattedPhoneNumber,
       role: selectedRole,
     };
 
-    console.log("New user data: ", newUser);
+    try {
+      if (employee) {
+        const userResponse = await updateUser(employee.id, newUser);
+        console.log("User update response: ", userResponse);
+
+        if (imageFile && imageFile.uri.startsWith("file://")) {
+          const imageResponse = await uploadImage(employee.id, imageFile.uri);
+          console.log("Image upload response: ", imageResponse);
+        }
+      }
+    } catch (error) {
+      console.error("Error updating user: ", error);
+    }
   };
 
   const showRolePicker = () => setVisible(true);
@@ -107,18 +138,17 @@ function UserForm({ employee = {} }) {
               theme={{
                 roundness: 25,
               }}
-              defaultValue={employee?.name || null}
             />
           )}
         />
       </View>
+
       {/* Role Picker */}
       <View style={styles.inputContainer}>
         <Text style={styles.label}> Employee Role</Text>
 
         <TouchableOpacity onPress={showRolePicker} style={styles.pickerInput}>
           <TextInput
-            // label="Select Role"
             placeholder="Select Role"
             mode="outlined"
             value={selectedRole}
@@ -129,7 +159,6 @@ function UserForm({ employee = {} }) {
             theme={{
               roundness: 25,
             }}
-            defaultValue={employee?.role || null}
           />
         </TouchableOpacity>
       </View>
@@ -175,7 +204,6 @@ function UserForm({ employee = {} }) {
           }}
           render={({ field: { onChange, onBlur, value } }) => (
             <TextInput
-              // label="Email Address"
               placeholder="Enter Email Address"
               mode="outlined"
               keyboardType="email-address"
@@ -187,7 +215,6 @@ function UserForm({ employee = {} }) {
               theme={{
                 roundness: 25,
               }}
-              defaultValue={employee?.email || null}
             />
           )}
         />
@@ -203,48 +230,49 @@ function UserForm({ employee = {} }) {
 
         <Controller
           control={control}
-          name="phone"
+          name="mobile"
           rules={{
-            required: "Phone is required",
+            required: "Mobile number is required",
             pattern: {
               value: /^0\d{9}$/,
-              message: "Phone must start with 0 and be 10 digits long",
+              message: "Mobile number must start with 0 and be 10 digits long",
             },
           }}
           render={({ field: { onChange, onBlur, value } }) => (
             <TextInput
-              //  label="Phone Number"
-              placeholder="Enter Phone Number"
+              placeholder="Enter Mobile Number"
               mode="outlined"
               keyboardType="phone-pad"
               onBlur={onBlur}
               onChangeText={onChange}
               value={value}
-              error={!!errors.phone}
+              error={!!errors.mobile}
               maxLength={10}
               style={styles.input}
               theme={{
                 roundness: 25,
               }}
-              defaultValue={employee?.phone || null}
             />
           )}
         />
 
-        {errors.phone && (
-          <Text style={styles.errorText}>{errors.phone.message}</Text>
+        {errors.mobile && (
+          <Text style={styles.errorText}>{errors.mobile.message}</Text>
         )}
       </View>
 
+      {/* Employee Image Picker */}
       <View style={styles.inputContainer}>
         <Text style={styles.label}> Employee Image</Text>
         <ImagesPicker imageFile={imageFile} setImageFile={setImageFile} />
       </View>
+
+      {/* Buttons */}
       <View style={styles.buttonContainer}>
         <Button
           mode="contained"
           onPress={handleSubmit(onSubmit)}
-          disabled={!isValid}
+          disabled={employee ? false : !isValid}
           style={styles.button}
         >
           Submit
