@@ -1,32 +1,68 @@
-import React, { useState, useCallback } from "react";
-import { View, StyleSheet, ScrollView } from "react-native";
-import { Avatar, Card, List, Text, Chip, Button } from "react-native-paper";
+import React, { useState, useCallback, useEffect } from "react";
+import { View, StyleSheet, ScrollView, Image } from "react-native";
+import {
+  Avatar,
+  Card,
+  List,
+  Text,
+  Chip,
+  Button,
+  ActivityIndicator,
+} from "react-native-paper";
 import { useAuthentication } from "../contexts/authContext";
 import FloatButton from "../components/FloatButton";
 import DialogBox from "../components/DialogBox";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
+import { getUser } from "../api/api";
+import { formatDate } from "../helpers/formatDate";
 
-function EmployeeDetails() {
+function EmployeeDetails({ route }) {
   const [isFocused, setIsFocused] = useState(false); // Initially not focused
   const [visible, setVisible] = useState(false);
   const [isResetPasswordClicked, setIsResetPasswordClicked] = useState(false);
   const [isActivateClicked, setIsActivateClicked] = useState(false);
+  const [loading, setLoading] = useState(true);
   const navigation = useNavigation();
   const { user } = useAuthentication();
+  const { id } = route.params;
+  const [employee, setEmployee] = useState({});
 
-  const employee = {
-    id: "EMP12345",
-    name: "John Doe",
-    role: "General Manager",
-    lastLogin: "2023-10-10 09:30 AM",
-    createdAt: "2022-05-15",
-    isActive: true,
-    phone: "0712356890",
-    email: "john.doe@example.com",
-    image: "https://randomuser.me/api/portraits/men/45.jpg",
-  };
+  useEffect(() => {
+    const fetchUserData = async () => {
+      try {
+        const response = await getUser(id);
+        console.log("Fetched user:", response.user);
+        if (response && response.user) {
+          setEmployee(response.user);
+        } else {
+          setUsersList({});
+        }
+      } catch (error) {
+        Toast.show({
+          type: "error",
+          text1: "An error occurred",
+          text2: error.message || "Please try again",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  // Define action list based on user role
+    fetchUserData();
+  }, [id]);
+
+  // const employee = {
+  //   id: "EMP12345",
+  //   name: "John Doe",
+  //   role: "General Manager",
+  //   lastLogin: "2023-10-10 09:30 AM",
+  //   createdAt: "2022-05-15",
+  //   isActive: true,
+  //   phone: "0712356890",
+  //   email: "john.doe@example.com",
+  //   image: "https://randomuser.me/api/portraits/men/45.jpg",
+  // };
+
   const actionList = [
     {
       icon: "account-key",
@@ -59,7 +95,7 @@ function EmployeeDetails() {
               setIsActivateClicked(true);
             },
           }),
-  ].filter(Boolean); // Filter out undefined elements
+  ].filter(Boolean);
 
   function handleResetPassword() {
     setVisible(false);
@@ -71,25 +107,36 @@ function EmployeeDetails() {
     setIsActivateClicked(false);
   }
 
-  // Use the useFocusEffect hook to track focus changes
   useFocusEffect(
     useCallback(() => {
-      setIsFocused(true); // When the screen is focused
+      setIsFocused(true);
       return () => {
-        setIsFocused(false); // When the screen loses focus
+        setIsFocused(false);
       };
     }, [])
   );
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
 
   return (
     <ScrollView style={styles.container}>
       {/* Employee Info Card */}
       <Card style={styles.card}>
         <Card.Content style={styles.cardContent}>
-          <Avatar.Image
-            source={{ uri: employee.image }}
-            size={80}
-            style={styles.avatar}
+          <Image
+            source={
+              typeof employee.image === "string" && employee.image !== ""
+                ? { uri: employee.image }
+                : require("../assets/default_user.png")
+            }
+            style={styles.userImage}
+            resizeMode="cover"
           />
           <View style={styles.info}>
             <Text style={styles.name}>{employee.name}</Text>
@@ -104,12 +151,12 @@ function EmployeeDetails() {
           <List.Section>
             <List.Item
               title="Employee ID"
-              description={employee.id}
+              description={employee.employee_id}
               left={() => <List.Icon icon="identifier" />}
             />
             <List.Item
               title="Mobile Number"
-              description={employee.phone}
+              description={employee.mobile}
               left={() => <List.Icon icon="phone" />}
             />
             <List.Item
@@ -119,12 +166,12 @@ function EmployeeDetails() {
             />
             <List.Item
               title="Last Login"
-              description={employee.lastLogin}
+              description={employee.last_login_at || "Never Logged In"}
               left={() => <List.Icon icon="login" />}
             />
             <List.Item
               title="Account Created"
-              description={employee.createdAt}
+              description={formatDate(employee.account_created_at)}
               left={() => <List.Icon icon="calendar" />}
             />
             <View style={styles.chipContainer}>
@@ -133,11 +180,11 @@ function EmployeeDetails() {
                 style={[
                   styles.statusChip,
                   {
-                    backgroundColor: employee.isActive ? "#4CAF50" : "#F44336",
+                    backgroundColor: employee.is_active ? "#4CAF50" : "#F44336",
                   },
                 ]}
               >
-                {employee.isActive ? "Active" : "Inactive"}
+                {employee.is_active ? "Active" : "Inactive"}
               </Chip>
             </View>
           </List.Section>
@@ -163,7 +210,7 @@ function EmployeeDetails() {
       {/* Dialog for Activate/Deactivate Account */}
       {isActivateClicked && (
         <DialogBox
-          title={employee.isActive ? "Deactivate Account" : "Activate Account"}
+          title={employee.is_active ? "Deactivate Account" : "Activate Account"}
           body={
             employee.isActive
               ? "Are you sure you want to deactivate this account?"
@@ -173,7 +220,7 @@ function EmployeeDetails() {
           visible={visible}
           setVisible={setVisible}
           setState={setIsActivateClicked}
-          status={employee.isActive ? "danger" : "normal"}
+          status={employee.is_active ? "danger" : "normal"}
         />
       )}
     </ScrollView>
@@ -185,6 +232,11 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 20,
     backgroundColor: "#f5f5f5",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
   card: {
     marginBottom: 20,
@@ -211,6 +263,12 @@ const styles = StyleSheet.create({
     fontSize: 16,
     color: "#777",
     marginTop: 5,
+  },
+  userImage: {
+    width: 80,
+    height: 80,
+    borderRadius: 40,
+    marginRight: 20,
   },
   chipContainer: {
     flexDirection: "row",

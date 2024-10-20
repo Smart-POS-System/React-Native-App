@@ -1,5 +1,5 @@
 import React, { useEffect, useState } from "react";
-import { View, FlatList, StyleSheet, ActivityIndicator } from "react-native";
+import { View, FlatList, StyleSheet } from "react-native";
 import {
   Card,
   Text,
@@ -8,6 +8,7 @@ import {
   Paragraph,
   Chip,
   TextInput,
+  ActivityIndicator,
 } from "react-native-paper";
 import axiosInstance from "../api/axiosConfig";
 import { useTheme } from "react-native-paper";

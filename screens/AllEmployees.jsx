@@ -1,34 +1,32 @@
 import React, { useState, useEffect } from "react";
-import {
-  View,
-  FlatList,
-  StyleSheet,
-  ActivityIndicator,
-  ScrollView,
-} from "react-native";
+import { View, FlatList, StyleSheet, ScrollView, Image } from "react-native";
 import { useNavigation } from "@react-navigation/native";
-import { users } from "../helpers/users"; // Assuming you have this file for mock data
 import {
   Text,
   TextInput,
   Button,
   Card,
-  Avatar,
   useTheme,
   Modal,
   Portal,
   List,
+  ActivityIndicator,
 } from "react-native-paper";
 import { useAuthentication } from "../contexts/authContext";
 import LottieView from "lottie-react-native";
+import { getUsers } from "../api/api";
+import Toast from "react-native-toast-message";
 
 export default function AllUsers() {
   const [searchText, setSearchText] = useState("");
-  const [role, setRole] = useState("All Roles"); // State to store selected role
-  const [filteredUsers, setFilteredUsers] = useState(users); // Initial users list to start with full list
+  const [role, setRole] = useState("All Roles");
+  const [usersList, setUsersList] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [filteredUsers, setFilteredUsers] = useState([]);
   const { navigate } = useNavigation();
   const { user } = useAuthentication();
   const [visible, setVisible] = useState(false);
+
   const roles = [
     "General Manager",
     "Regional Manager",
@@ -48,31 +46,61 @@ export default function AllUsers() {
     hideMenu();
   };
 
-  // Filter the users based on searchText and role
   useEffect(() => {
-    let filtered = users;
+    const fetchUsers = async () => {
+      try {
+        const response = await getUsers();
+        //  console.log("Fetched users:", response.users); // Debugging
+        if (response && response.users) {
+          setUsersList(response.users);
+        } else {
+          setUsersList([]); // Handle empty response
+        }
+      } catch (error) {
+        Toast.show({
+          type: "error",
+          text1: "An error occurred",
+          text2: error.message || "Please try again",
+        });
+      } finally {
+        setLoading(false);
+      }
+    };
 
-    // Filter by name if searchText is not empty
+    fetchUsers();
+  }, []);
+
+  useEffect(() => {
+    if (!usersList || usersList.length === 0) {
+      setFilteredUsers([]); // Handle no users case
+      return;
+    }
+
+    let filtered = [...usersList];
+
     if (searchText) {
       filtered = filtered.filter((user) =>
         user.name.toLowerCase().includes(searchText.toLowerCase())
       );
     }
 
-    // Filter by role if a role is selected
     if (role !== "All Roles") {
       filtered = filtered.filter((user) => user.role === role);
     }
 
-    setFilteredUsers(filtered); // Update the filtered users list
-  }, [searchText, role]);
+    setFilteredUsers(filtered);
+  }, [searchText, role, usersList]);
 
   function handleButtonClick() {
     navigate("Create Employee");
   }
 
-  if (!users.length) {
-    return <ActivityIndicator />;
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
   }
 
   return (
@@ -109,7 +137,7 @@ export default function AllUsers() {
             <ScrollView>
               {["All Roles", ...allowedRoles].map((role, index) => (
                 <List.Item
-                  key={index}
+                  key={index.toString()}
                   title={role}
                   onPress={() => handleSelectRole(role)}
                   left={(props) => (
@@ -133,7 +161,6 @@ export default function AllUsers() {
       </Button>
 
       {/* List of users */}
-
       {filteredUsers.length > 0 ? (
         <FlatList
           data={filteredUsers}
@@ -155,10 +182,18 @@ export default function AllUsers() {
 }
 
 // Component for each user item
+const defaultUserImage = require("../assets/default_user.png");
+
 function UserItem({ userData }) {
   const { employee_id, name, role, image, is_active } = userData;
   const { navigate } = useNavigation();
   const theme = useTheme();
+
+  // Check if the image is a valid URL string or else use defaultUserImage
+  const validImageUri =
+    typeof image === "string" && image !== ""
+      ? { uri: image }
+      : defaultUserImage;
 
   function handleViewUser() {
     navigate("Employee Details", { id: employee_id });
@@ -172,27 +207,27 @@ function UserItem({ userData }) {
       ]}
       onPress={handleViewUser}
     >
-      <Card.Title
-        title={name}
-        subtitle={role}
-        left={() => (
-          <Avatar.Image
-            source={{ uri: image || "../assets/default_user.png" }}
-            size={48}
-          />
-        )}
-        right={() => (
-          <Text
-            style={{
-              color: is_active ? theme.colors.primary : theme.colors.disabled,
-              marginHorizontal: 10,
-              padding: 5,
-            }}
-          >
-            {is_active ? "Active" : "Deactivated"}
-          </Text>
-        )}
-      />
+      <View style={styles.cardContent}>
+        {/* Use Image component from React Native */}
+        <Image
+          source={validImageUri}
+          style={styles.userImage}
+          resizeMode="cover"
+        />
+        <View style={styles.textContainer}>
+          <Text style={styles.userName}>{name}</Text>
+          <Text style={styles.userRole}>{role}</Text>
+        </View>
+        <Text
+          style={{
+            color: is_active ? theme.colors.primary : theme.colors.disabled,
+            marginHorizontal: 10,
+            padding: 5,
+          }}
+        >
+          {is_active ? "Active" : "Deactivated"}
+        </Text>
+      </View>
     </Card>
   );
 }
@@ -203,6 +238,11 @@ const styles = StyleSheet.create({
     flex: 1,
     padding: 16,
     backgroundColor: "#fff",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
   roleContainer: {
     padding: 8,
@@ -245,6 +285,28 @@ const styles = StyleSheet.create({
   },
   inactiveCard: {
     backgroundColor: "#f4f4f4",
+  },
+  cardContent: {
+    flexDirection: "row",
+    alignItems: "center",
+    padding: 10,
+  },
+  userImage: {
+    width: 48,
+    height: 48,
+    borderRadius: 24,
+    marginRight: 16,
+  },
+  textContainer: {
+    flex: 1,
+  },
+  userName: {
+    fontSize: 16,
+    fontWeight: "bold",
+  },
+  userRole: {
+    fontSize: 14,
+    color: "#555",
   },
   lottieContainer: {
     flex: 1,

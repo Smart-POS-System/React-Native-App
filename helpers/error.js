@@ -2,7 +2,10 @@ export function handleError(error) {
   /*eslint-disable */
   if (error?.response) {
     //console.log("Error....", error.response.data.message);
-    throw error.response.data.message || "An error occurred on the server";
+    throw (
+      new Error(error.response.data.message) ||
+      "An error occurred on the server"
+    );
   } else if (error.request) {
     throw "There is a problem with the network connection";
   } else {
