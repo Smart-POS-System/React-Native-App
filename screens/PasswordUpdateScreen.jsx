@@ -3,8 +3,12 @@ import { View, StyleSheet, ScrollView } from "react-native";
 import { useForm, Controller } from "react-hook-form";
 import { TextInput, Button, Text, useTheme } from "react-native-paper";
 import { Ionicons } from "@expo/vector-icons";
+import { updateUserPassword } from "../api/api";
+import Toast from "react-native-toast-message";
+import { useNavigation } from "@react-navigation/native";
+import { useAuthentication } from "../contexts/authContext";
 
-export default function UpdatePasswordScreen({ navigation }) {
+export default function UpdatePasswordScreen() {
   const {
     control,
     handleSubmit,
@@ -14,13 +18,35 @@ export default function UpdatePasswordScreen({ navigation }) {
   } = useForm({
     mode: "onChange",
   });
+  const [loading, setLoading] = useState(false);
+  //const navigation = useNavigation();
+  const { logOut } = useAuthentication();
 
   const newPassword = watch("newPassword");
 
-  const onSubmit = (data) => {
+  async function onSubmit(data) {
     console.log("Password updated successfully!", data);
-    // Add your logic here to update the password, such as an API call
-  };
+    try {
+      setLoading(true);
+      const response = await updateUserPassword(data);
+      if (response) {
+        Toast.show({
+          type: "success",
+          text1: "Password updated successfully",
+          text2: "Please login again with your new password",
+        });
+        setTimeout(() => logOut(), 3000);
+      }
+    } catch (error) {
+      Toast.show({
+        type: "error",
+        text1: "An error occurred",
+        text2: error.message || "Please try again",
+      });
+    } finally {
+      setLoading(false);
+    }
+  }
 
   const handleClear = () => {
     reset({

@@ -1,11 +1,5 @@
 import React, { useState, useEffect } from "react";
-import {
-  View,
-  StyleSheet,
-  ScrollView,
-  TouchableOpacity,
-  ActivityIndicator,
-} from "react-native";
+import { View, StyleSheet, ScrollView, TouchableOpacity } from "react-native";
 import { useForm, Controller } from "react-hook-form";
 import {
   TextInput,
@@ -15,10 +9,12 @@ import {
   Portal,
   List,
   useTheme,
+  ActivityIndicator,
 } from "react-native-paper";
 import ImagesPicker from "../screens/ImagePicker";
 import { useAuthentication } from "../contexts/authContext";
-import { updateUser, uploadImage } from "../api/api";
+import { addUser, updateUser, uploadImage } from "../api/api";
+import Toast from "react-native-toast-message";
 
 function UserForm({ employee = {} }) {
   const {
@@ -32,7 +28,7 @@ function UserForm({ employee = {} }) {
       name: employee?.name || "",
       role: employee?.role || "",
       email: employee?.email || "",
-      mobile: employee?.mobile || "",
+      phone: employee?.mobile || "",
     },
   });
 
@@ -41,8 +37,9 @@ function UserForm({ employee = {} }) {
   );
   const [visible, setVisible] = useState(false);
   const theme = useTheme();
-  const { user } = useAuthentication();
+  const { user, setIsUpdated } = useAuthentication();
   const isExistingUser = Object.keys(employee).length > 0;
+  const [loading, setLoading] = useState(false);
 
   const rolesList = [
     "General Manager",
@@ -55,19 +52,20 @@ function UserForm({ employee = {} }) {
   const allowedRoles = rolesList.filter(
     (role) => rolesList.indexOf(user.role) < rolesList.indexOf(role)
   );
-
   const [selectedRole, setSelectedRole] = useState(employee?.role || "");
 
-  // Reset the form with employee data when employee object changes
   useEffect(() => {
-    reset({
-      name: employee?.name || "",
-      role: employee?.role || "",
-      email: employee?.email || "",
-      mobile: employee?.mobile || "",
-    });
-    setSelectedRole(employee?.role || "");
-    setImageFile(employee?.image ? { uri: employee.image } : null);
+    // Only reset form and update state if employee object changes meaningfully
+    if (employee && employee.name !== undefined) {
+      reset({
+        name: employee.name,
+        role: employee.role,
+        email: employee.email,
+        phone: employee.mobile,
+      });
+      setSelectedRole(employee.role);
+      setImageFile(employee.image ? { uri: employee.image } : null);
+    }
   }, [employee, reset]);
 
   const handleClear = () => {
@@ -75,36 +73,79 @@ function UserForm({ employee = {} }) {
       name: "",
       role: "",
       email: "",
-      mobile: "",
+      phone: "",
     });
     setImageFile(null);
     setSelectedRole("");
   };
 
   const onSubmit = async (data) => {
-    const formattedPhoneNumber = data.mobile.padStart(10, "0").slice(0, 10);
+    const formattedPhoneNumber = data.phone.padStart(10, "0").slice(0, 10);
     const newUser = {
-      ...data,
-      mobile: formattedPhoneNumber,
+      name: data.name,
       role: selectedRole,
+      email: data.email,
+      phone: formattedPhoneNumber,
     };
 
     try {
-      if (employee) {
-        const userResponse = await updateUser(employee.id, newUser);
-        console.log("User update response: ", userResponse);
-
+      setLoading(true);
+      if (isExistingUser) {
+        const userResponse = await updateUser(employee.employee_id, newUser);
+        if (userResponse) {
+          Toast.show({
+            type: "success",
+            text1: "Employee updated successfully",
+          });
+        }
         if (imageFile && imageFile.uri.startsWith("file://")) {
-          const imageResponse = await uploadImage(employee.id, imageFile.uri);
-          console.log("Image upload response: ", imageResponse);
+          const imageResponse = await uploadImage(
+            employee.employee_id,
+            imageFile.uri
+          );
+          if (imageResponse) {
+            Toast.show({
+              type: "success",
+              text1: "Profile image updated successfully",
+            });
+            setIsUpdated((value) => !value);
+          }
+        }
+      } else {
+        const userResponse = await addUser({
+          ...newUser,
+          image: imageFile?.uri || null,
+        });
+        if (userResponse) {
+          Toast.show({
+            type: "success",
+            text1: "Employee added successfully",
+          });
+          setIsUpdated((value) => !value);
         }
       }
     } catch (error) {
-      console.error("Error updating user: ", error);
+      Toast.show({
+        type: "error",
+        text1: "An error occurred",
+        text2: error.message || "Please try again",
+      });
+    } finally {
+      setLoading(false);
     }
   };
 
   const showRolePicker = () => setVisible(true);
+
+  if (loading) {
+    return (
+      <ActivityIndicator
+        size="large"
+        color="#0000ff"
+        style={styles.loadingContainer}
+      />
+    );
+  }
 
   return (
     <ScrollView contentContainerStyle={styles.container}>
@@ -230,7 +271,7 @@ function UserForm({ employee = {} }) {
 
         <Controller
           control={control}
-          name="mobile"
+          name="phone"
           rules={{
             required: "Mobile number is required",
             pattern: {
@@ -246,7 +287,7 @@ function UserForm({ employee = {} }) {
               onBlur={onBlur}
               onChangeText={onChange}
               value={value}
-              error={!!errors.mobile}
+              error={!!errors.phone}
               maxLength={10}
               style={styles.input}
               theme={{
@@ -256,8 +297,8 @@ function UserForm({ employee = {} }) {
           )}
         />
 
-        {errors.mobile && (
-          <Text style={styles.errorText}>{errors.mobile.message}</Text>
+        {errors.phone && (
+          <Text style={styles.errorText}>{errors.phone.message}</Text>
         )}
       </View>
 
@@ -292,6 +333,11 @@ const styles = StyleSheet.create({
     flexGrow: 1,
     padding: 20,
     backgroundColor: "#fff",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
   header: {
     fontSize: 22,

@@ -68,8 +68,12 @@ function LoginScreen() {
   });
 
   return (
-    <LinearGradient
-      colors={["#3131f0", "#ADD8E6"]} // Dark blue to very light blue
+    // <LinearGradient
+    //   colors={["#3131f0", "#ADD8E6"]} // Dark blue to very light blue
+    //   style={styles.background}
+    // >
+    <ImageBackground
+      source={require("../assets/background.jpg")}
       style={styles.background}
     >
       <View style={styles.container}>
@@ -92,7 +96,7 @@ function LoginScreen() {
           </Card>
         </Animated.View>
       </View>
-    </LinearGradient>
+    </ImageBackground>
   );
 }
 
