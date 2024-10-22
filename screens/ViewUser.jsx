@@ -13,17 +13,20 @@ import { useAuthentication } from "../contexts/authContext";
 import FloatButton from "../components/FloatButton";
 import DialogBox from "../components/DialogBox";
 import { useNavigation, useFocusEffect } from "@react-navigation/native";
-import { getUser } from "../api/api";
+import { activateUser, deleteUser, forgotPassword, getUser } from "../api/api";
 import { formatDate } from "../helpers/formatDate";
+import Toast from "react-native-toast-message";
+import { set } from "date-fns";
 
 function EmployeeDetails({ route }) {
-  const [isFocused, setIsFocused] = useState(false); // Initially not focused
+  const [isFocused, setIsFocused] = useState(false);
   const [visible, setVisible] = useState(false);
   const [isResetPasswordClicked, setIsResetPasswordClicked] = useState(false);
   const [isActivateClicked, setIsActivateClicked] = useState(false);
   const [loading, setLoading] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
   const navigation = useNavigation();
-  const { user } = useAuthentication();
+  const { user, isUpdated, setIsUpdated } = useAuthentication();
   const { id } = route.params;
   const [employee, setEmployee] = useState({});
 
@@ -31,11 +34,10 @@ function EmployeeDetails({ route }) {
     const fetchUserData = async () => {
       try {
         const response = await getUser(id);
-        console.log("Fetched user:", response.user);
         if (response && response.user) {
           setEmployee(response.user);
         } else {
-          setUsersList({});
+          setEmployee({});
         }
       } catch (error) {
         Toast.show({
@@ -49,19 +51,7 @@ function EmployeeDetails({ route }) {
     };
 
     fetchUserData();
-  }, [id]);
-
-  // const employee = {
-  //   id: "EMP12345",
-  //   name: "John Doe",
-  //   role: "General Manager",
-  //   lastLogin: "2023-10-10 09:30 AM",
-  //   createdAt: "2022-05-15",
-  //   isActive: true,
-  //   phone: "0712356890",
-  //   email: "john.doe@example.com",
-  //   image: "https://randomuser.me/api/portraits/men/45.jpg",
-  // };
+  }, [id, isUpdated]);
 
   const actionList = [
     {
@@ -78,7 +68,7 @@ function EmployeeDetails({ route }) {
       onPress: () => navigation.navigate("Update Employee", { employee }),
     },
     user.role === "General Manager" &&
-      (employee.isActive
+      (employee.is_active
         ? {
             icon: "account-off",
             label: "Deactivate Account",
@@ -97,14 +87,60 @@ function EmployeeDetails({ route }) {
           }),
   ].filter(Boolean);
 
-  function handleResetPassword() {
+  async function handleResetPassword() {
+    try {
+      setIsLoading(true);
+      const response = await forgotPassword(employee.email); // Ensure employee_id is passed
+      setIsLoading(false);
+      if (response) {
+        Toast.show({
+          type: "success",
+          text1: "Password Reset",
+          text2: "Reset password token sent successfully",
+        });
+      }
+    } catch (error) {
+      setIsLoading(false);
+      Toast.show({
+        type: "error",
+        text1: "An error occurred",
+        text2: error.message || "Please try again",
+      });
+    }
     setVisible(false);
     setIsResetPasswordClicked(false);
   }
 
-  function handleActivate() {
+  async function handleActivate() {
+    try {
+      let response;
+      setIsLoading(true);
+      if (employee.is_active) {
+        response = await deleteUser(employee.employee_id);
+      } else {
+        response = await activateUser(employee.employee_id);
+      }
+      setIsLoading(false);
+      setIsUpdated((value) => !value);
+      if (response) {
+        Toast.show({
+          type: "success",
+          text1: employee.is_active
+            ? "Account deactivated"
+            : "Account activated",
+          text2: "User account status updated successfully",
+        });
+      }
+    } catch (error) {
+      setIsLoading(false);
+      Toast.show({
+        type: "error",
+        text1: "An error occurred",
+        text2: error.message || "Please try again",
+      });
+    }
     setVisible(false);
-    setIsActivateClicked(false);
+    setIsResetPasswordClicked(false);
   }
 
   useFocusEffect(
@@ -116,7 +152,7 @@ function EmployeeDetails({ route }) {
     }, [])
   );
 
-  if (loading) {
+  if (loading || isLoading) {
     return (
       <View style={styles.loadingContainer}>
         <ActivityIndicator size="large" />
@@ -198,7 +234,7 @@ function EmployeeDetails({ route }) {
       {isResetPasswordClicked && (
         <DialogBox
           title="Reset Password"
-          body="Are you sure you want to send the reset password token to this employee ?"
+          body="Are you sure you want to send the reset password token to this employee?"
           handleDone={handleResetPassword}
           visible={visible}
           setVisible={setVisible}
@@ -212,7 +248,7 @@ function EmployeeDetails({ route }) {
         <DialogBox
           title={employee.is_active ? "Deactivate Account" : "Activate Account"}
           body={
-            employee.isActive
+            employee.is_active
               ? "Are you sure you want to deactivate this account?"
               : "Are you sure you want to activate this account?"
           }
@@ -248,9 +284,6 @@ const styles = StyleSheet.create({
     flexDirection: "row",
     alignItems: "center",
   },
-  avatar: {
-    marginRight: 15,
-  },
   info: {
     flex: 1,
   },
@@ -284,7 +317,7 @@ const styles = StyleSheet.create({
   button: {
     flex: 1,
     marginHorizontal: 10,
-    backgroundColor: "#6200ee", // Adjust button color
+    backgroundColor: "#6200ee",
   },
 });
 

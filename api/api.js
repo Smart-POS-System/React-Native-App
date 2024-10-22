@@ -1,5 +1,5 @@
 import { handleError } from "../helpers/error";
-import axiosInstance from "./axiosConfig";
+import axiosInstance, { formDataAxios } from "./axiosConfig";
 
 export async function loginUser({ email, password }) {
   try {
@@ -23,7 +23,7 @@ export async function getUsers() {
     const response = await axiosInstance.get(`/users/usersForMobile`);
 
     if (response?.data) {
-      console.log(response.data.data);
+      // console.log(response.data.data);
       return response.data.data;
     }
   } catch (error) {
@@ -33,7 +33,6 @@ export async function getUsers() {
 
 export async function getUser(id) {
   try {
-    console.log("apiid", id);
     const response = await axiosInstance.get(`/users/${id}`);
     if (response?.data) {
       return response.data.data;
@@ -56,9 +55,11 @@ export async function logoutUser() {
 
 export async function deleteUser(id) {
   try {
+    console.log("rgrrdfdfg", id);
     const response = await axiosInstance.delete(`/users/${id}`);
+    console.log("after delete");
     if (response?.data) {
-      return response.data.data;
+      return true;
     }
   } catch (error) {
     handleError(error);
@@ -67,9 +68,11 @@ export async function deleteUser(id) {
 
 export async function activateUser(id) {
   try {
+    console.log("rgrrdfdfg", id);
     const response = await axiosInstance.patch(`/users/activate/${id}`);
+    console.log("after activate");
     if (response?.data) {
-      return response.data.data;
+      return true;
     }
   } catch (error) {
     handleError(error);
@@ -77,29 +80,29 @@ export async function activateUser(id) {
 }
 
 export async function addUser(data) {
+  console.log(data);
   try {
     const formData = new FormData();
     formData.append("name", data?.name);
     formData.append("email", data?.email);
     formData.append("role", data?.role);
-    formData.append("phone", data?.mobile);
+    formData.append("phone", data?.phone);
 
     if (data?.image) {
-      const file = new File(
-        [data.image],
-        `employee_${data.name}_${data.email}_${Date.now()}.jpg`,
-        { type: "image/jpeg" }
-      );
-      formData.append("image", file);
+      const uri = data.image;
+      const fileName = `employee_${data.name}_${data.email}_${Date.now()}.jpg`;
+      const type = "image/jpeg";
+
+      formData.append("image", {
+        uri: uri,
+        type: type,
+        name: fileName,
+      });
     }
-    const response = await axiosInstance({
-      method: "post",
-      url: `http://localhost:${PORT}/api/v1/users/`,
-      data: formData,
+    const response = await formDataAxios.post(`/users`, formData, {
       headers: {
-        "Content-Type": "multipart/form-data",
+        Accept: "application/json",
       },
-      withCredentials: true,
     });
 
     if (response?.data) {
@@ -113,17 +116,8 @@ export async function addUser(data) {
 
 export async function updateUser(id, data) {
   try {
-    const response = await axiosInstance({
-      method: "patch",
-      url: data?.role
-        ? `http://localhost:${PORT}/api/v1/users/${id}`
-        : `http://localhost:${PORT}/api/v1/users/updateMe/${id}`,
-      data: data,
-      headers: {
-        "Content-Type": "application/json",
-      },
-      withCredentials: true,
-    });
+    console.log(data);
+    const response = await axiosInstance.patch(`/users/${id}`, data);
 
     if (response?.data) {
       return response.data.data;
@@ -133,24 +127,56 @@ export async function updateUser(id, data) {
   }
 }
 
-export async function uploadImage(id, image) {
+export async function uploadImage(id, uri) {
   try {
     const formData = new FormData();
-    const file = new File([image], `employee_${id}_${Date.now()}.jpg`, {
-      type: "image/jpeg",
-    });
-    formData.append("image", file);
+    const fileName = `employee_${id}_${Date.now()}.jpg`;
+    const type = "image/jpeg";
 
-    const response = await axiosInstance({
-      method: "patch",
-      url: `http://localhost:${PORT}/api/v1/users/updateImage/${id}`,
-      data: formData,
-      headers: {
-        "Content-Type": "multipart/form-data",
-      },
-      withCredentials: true,
+    formData.append("image", {
+      uri: uri,
+      type: type,
+      name: fileName,
     });
 
+    const response = await formDataAxios.patch(
+      `/users/updateImage/${id}`,
+      formData,
+      {
+        headers: {
+          Accept: "application/json",
+        },
+      }
+    );
+
+    if (response?.data) {
+      return response.data.data;
+    }
+  } catch (error) {
+    handleError(error);
+  }
+}
+
+export async function forgotPassword(email) {
+  try {
+    const response = await axiosInstance.post("/users/forgotPassword", {
+      email,
+    });
+    if (response?.data) {
+      return response.data;
+    }
+  } catch (error) {
+    handleError(error);
+  }
+}
+
+export async function updateUserPassword(data) {
+  try {
+    const response = await axiosInstance.patch("/users/updatePassword", {
+      currentPassword: data.currentPassword,
+      password: data.newPassword,
+      passwordConfirm: data.confirmPassword,
+    });
     if (response?.data) {
       return response.data.data;
     }

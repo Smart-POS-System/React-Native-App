@@ -24,7 +24,7 @@ export default function AllUsers() {
   const [loading, setLoading] = useState(true);
   const [filteredUsers, setFilteredUsers] = useState([]);
   const { navigate } = useNavigation();
-  const { user } = useAuthentication();
+  const { user, isUpdated } = useAuthentication();
   const [visible, setVisible] = useState(false);
 
   const roles = [
@@ -68,7 +68,7 @@ export default function AllUsers() {
     };
 
     fetchUsers();
-  }, []);
+  }, [isUpdated]);
 
   useEffect(() => {
     if (!usersList || usersList.length === 0) {

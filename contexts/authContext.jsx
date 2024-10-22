@@ -9,6 +9,7 @@ function AuthProvider({ children }) {
   const [loading, setLoading] = useState(true);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
   const [fullUser, setFullUser] = useState(null);
+  const [isUpdated, setIsUpdated] = useState(false);
 
   useEffect(() => {
     const fetchToken = async () => {
@@ -84,6 +85,8 @@ function AuthProvider({ children }) {
     isAuthenticated,
     handleFullUser,
     fullUser,
+    isUpdated,
+    setIsUpdated,
   };
 
   return <authContext.Provider value={value}>{children}</authContext.Provider>;
