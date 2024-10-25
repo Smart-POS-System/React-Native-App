@@ -1,6 +1,13 @@
-import React, { useEffect, useRef } from "react";
+import React, { useEffect, useRef, useState } from "react";
 import { View, Text, Animated, StyleSheet } from "react-native";
-import { Card as PaperCard, Avatar } from "react-native-paper";
+import {
+  Card as PaperCard,
+  Avatar,
+  ActivityIndicator,
+} from "react-native-paper";
+import axiosInstance from "./../api/axiosConfig";
+import { IP } from "../helpers/ip";
+import { useAuthentication } from "../contexts/authContext";
 
 // Animated Number Component that smoothly transitions the amount value
 const AnimatedNumber = ({ value }) => {
@@ -41,7 +48,7 @@ function Card({ title, amount, icon, colour, outerColour }) {
         />
         <View style={styles.textContainer}>
           <Text style={styles.title}>{title}</Text>
-          <AnimatedNumber value={amount} />
+          <Text>Rs. {amount.toFixed(2)}</Text>
         </View>
       </View>
     </PaperCard>
@@ -49,13 +56,44 @@ function Card({ title, amount, icon, colour, outerColour }) {
 }
 
 // DashboardCards component that holds all individual cards in a two-column grid
-function DashboardCards() {
+function DashboardCards({ startDate, endDate }) {
+  const [totalRevenue, setTotalRevenue] = useState(0);
+  const [loading, setLoading] = useState(true);
+  const { isUpdated } = useAuthentication();
+
+  useEffect(() => {
+    const fetchTotalRevenue = async () => {
+      setLoading(true);
+      try {
+        const totalRevenueResponse = await axiosInstance.get(
+          `http://${IP}:49164/total-revenue?startDate=${startDate}&endDate=${endDate}`
+        );
+
+        setTotalRevenue(totalRevenueResponse.data);
+      } catch (error) {
+        console.log(error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchTotalRevenue();
+  }, [startDate, endDate, isUpdated]);
+
+  if (loading) {
+    return (
+      <View style={styles.loaderContainer}>
+        <ActivityIndicator size="large" color="#0000ff" />
+      </View>
+    );
+  }
+
   return (
     <View style={styles.container}>
       <View style={styles.row}>
         <Card
           title="Total Revenue"
-          amount={5000}
+          amount={totalRevenue}
           icon="book"
           colour="#4ac71c" // Green-300 equivalent
           outerColour="#83ec90" // Green-100 equivalent
@@ -98,6 +136,11 @@ const styles = StyleSheet.create({
   row: {
     flexDirection: "row",
     justifyContent: "space-around",
+  },
+  loaderContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
   card: {
     flex: 1,

@@ -1,16 +1,39 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { View, FlatList, StyleSheet } from "react-native";
 import { Text, Button, Card, Paragraph, Title } from "react-native-paper";
 import { DateTimePickerAndroid } from "@react-native-community/datetimepicker";
 import { Ionicons } from "@expo/vector-icons";
 import { salesDetails } from "../helpers/list";
 import LottieView from "lottie-react-native";
+import axiosInstance from "./../api/axiosConfig";
+import { IP } from "../helpers/ip";
 
 function SalesList() {
+  const [bills, setBills] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [startDate, setStartDate] = useState(
-    formatDate(new Date(Date.now() - 7 * 24 * 60 * 60 * 1000)) // 7 days ago
+    formatDate(new Date(Date.now() - 365 * 24 * 60 * 60 * 1000)) // 1 year ago
   );
   const [endDate, setEndDate] = useState(formatDate(new Date(Date.now())));
+
+  useEffect(() => {
+    const fetchBills = async () => {
+      setLoading(true);
+
+      try {
+        const billsResponse = await axiosInstance.get(
+          `http://${IP}:49164/sales-transactions?startDate=${startDate}&endDate=${endDate}`
+        );
+
+        setBills(billsResponse.data);
+      } catch (error) {
+        console.log(error);
+      } finally {
+        setLoading(false);
+      }
+    };
+    fetchBills();
+  }, [startDate, endDate]);
 
   function formatDate(date) {
     return date.toISOString().split("T")[0];
@@ -38,47 +61,53 @@ function SalesList() {
     <Card style={styles.card}>
       <Card.Content>
         <View style={styles.headerRow}>
-          <Title style={styles.billId}>Bill Number: {item.bill_id}</Title>
-          <Text style={styles.date}>Date: {item.date}</Text>
+          <Title style={styles.billId}>Bill Number: {item?.bill_id}</Title>
+          <Text style={styles.date}>Date: {item?.date.substring(0, 10)}</Text>
         </View>
 
         <View style={styles.row}>
           <Ionicons name="person" size={18} color="#46047c" />
-          <Text style={styles.text}>Customer Name : {item.customer_name}</Text>
+          <Text style={styles.text}>Customer Name : {item?.customer_name}</Text>
         </View>
 
         <View style={styles.row}>
           <Ionicons name="pricetag" size={18} color="#46047c" />
-          <Text style={styles.text}> Amount : Rs.{item.amount}</Text>
+          <Text style={styles.text}>
+            {" "}
+            Amount : Rs. {parseFloat(item?.amount).toFixed(2)}
+          </Text>
         </View>
 
         <View style={styles.row}>
           <Ionicons name="cash" size={18} color="#46047c" />
           <Text style={styles.text}>
             {" "}
-            Payment Method : {item.payment_method}
+            Payment Method : {item?.payment_method}
           </Text>
         </View>
 
         <View style={styles.row}>
           <Ionicons name="storefront" size={18} color="#46047c" />
-          <Text style={styles.text}> Store : {item.store}</Text>
+          <Text style={styles.text}> Store : {item?.store}</Text>
         </View>
 
         <View style={styles.row}>
           <Ionicons name="people" size={18} color="#46047c" />
-          <Text style={styles.text}> Cashier : {item.cashier}</Text>
+          <Text style={styles.text}> Cashier : {item?.cashier}</Text>
         </View>
 
         <View style={styles.row}>
           <Ionicons name="wallet" size={18} color="#46047c" />
-          <Text style={styles.text}> Discount : Rs.{item.discount}</Text>
+          <Text style={styles.text}>
+            {" "}
+            Discount : {parseFloat(item?.discount) * 100}%
+          </Text>
         </View>
 
         {item.description && (
           <View style={styles.row}>
             <Ionicons name="information-circle" size={18} color="#46047c" />
-            <Text style={styles.text}> {item.description}</Text>
+            <Text style={styles.text}> {item?.description}</Text>
           </View>
         )}
       </Card.Content>
@@ -115,7 +144,7 @@ function SalesList() {
       {/* FlatList to show sales data */}
       {filteredSales.length > 0 ? (
         <FlatList
-          data={filteredSales}
+          data={bills}
           renderItem={renderItem}
           keyExtractor={(item) => item.bill_id.toString()}
           style={styles.list}

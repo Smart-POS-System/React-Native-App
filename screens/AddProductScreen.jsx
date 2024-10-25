@@ -2,10 +2,15 @@ import React, { useState } from "react";
 import { View, StyleSheet, ScrollView, ActivityIndicator } from "react-native";
 import { useForm, Controller } from "react-hook-form";
 import { TextInput, Button, Text, useTheme } from "react-native-paper";
+import axiosInstance from "../api/axiosConfig";
+import { useAuthentication } from "../contexts/authContext";
+import Toast from "react-native-toast-message";
+import { IP } from "../helpers/ip";
 
 function AddProduct() {
   const theme = useTheme();
   const [loading, setLoading] = useState(false);
+  const { setIsUpdated } = useAuthentication();
 
   const {
     control,
@@ -21,17 +26,53 @@ function AddProduct() {
     },
   });
 
-  const onSubmit = (data) => {
-    console.log("New Product Data:", data);
-    setLoading(true);
+  async function onSubmit(data) {
+    setLoading(true); // Set loading state to true
+    console.log("data", data);
 
-    // Simulate API call or async logic
-    setTimeout(() => {
-      console.log("Product Added Successfully");
-      setLoading(false);
-      handleClear(); // Reset form after successful submission
-    }, 1000);
-  };
+    Toast.show({
+      type: "info",
+      text1: "Adding product...",
+      visibilityTime: 3000,
+      autoHide: false, // Keep it until the process is done
+    });
+
+    try {
+      const formData = new FormData();
+      formData.append("product_name", data?.productName); // Ensure correct field names
+      formData.append("unit_weight", data?.unitWeight);
+
+      const savePromise = await axiosInstance({
+        method: "post",
+        url: `http://${IP}:49160/products`,
+        data: formData,
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+        withCredentials: true,
+      });
+
+      setIsUpdated((value) => !value);
+
+      Toast.show({
+        type: "success",
+        text1: "New product added!",
+      });
+
+      reset({
+        productName: "", // Reset with correct field names
+        unitWeight: "",
+      });
+    } catch (error) {
+      Toast.show({
+        type: "error",
+        text1: "Couldn't add product...",
+      });
+      console.log(error);
+    } finally {
+      setLoading(false); // Set loading state to false after submission
+    }
+  }
 
   const handleClear = () => {
     reset();
