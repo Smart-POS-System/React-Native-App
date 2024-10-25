@@ -1,28 +1,95 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { View, StyleSheet, ScrollView, Pressable, Text } from "react-native";
 import { Button, DataTable, TextInput } from "react-native-paper";
-import { productsOfSale } from "../helpers/list";
 import DialogBox from "../components/DialogBox";
 import { useNavigation } from "@react-navigation/native";
+import { ActivityIndicator } from "react-native-paper";
+import axiosInstance from "../api/axiosConfig";
+import { useAuthentication } from "../contexts/authContext";
+import Toast from "react-native-toast-message";
+import { IP } from "../helpers/ip";
 
 function ProductScreen() {
   const [page, setPage] = useState(0);
+  const [products, setProducts] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [itemsPerPage] = useState(10);
   const [searchQuery, setSearchQuery] = useState("");
   const [isDeleteButtonClicked, setIsDeleteButtonClicked] = useState(false);
+  const { isUpdated } = useAuthentication();
+
   const navigation = useNavigation();
 
+  useEffect(() => {
+    const fetchProducts = async () => {
+      setLoading(true);
+      try {
+        const productsResponse = await axiosInstance.get(
+          `http://${IP}:49160/products`
+        );
+        setProducts(productsResponse.data);
+        console.log(productsResponse.data);
+      } catch (error) {
+        console.log(error);
+      } finally {
+        setLoading(false);
+      }
+    };
+
+    fetchProducts();
+  }, [isUpdated]);
+
   // Filter products based on search query
-  const filteredProducts = productsOfSale.filter((product) =>
+  const filteredProducts = products.filter((product) =>
     product.product_name.toLowerCase().includes(searchQuery.toLowerCase())
   );
 
   const from = page * itemsPerPage;
   const to = Math.min((page + 1) * itemsPerPage, filteredProducts.length);
 
-  function handleDelete(product) {
-    console.log(`Delete product: ${product.product_name}`);
-    setIsDeleteButtonClicked(true);
+  const handleDelete = async (product_id) => {
+    const oldProducts = [...products];
+    const updatedProducts = oldProducts.filter(
+      (product) => product.product_id !== product_id
+    );
+    setProducts(updatedProducts);
+
+    Toast.show({
+      type: "info",
+      text1: "Deleting...",
+      visibilityTime: 3000,
+      autoHide: false, // Keep it until the process is done
+    });
+
+    try {
+      // Use toast.promise to handle the loading, success, and error states
+      const deleteResponse = await axiosInstance.delete(
+        `http://${IP}:49160/products/${product_id}`
+      );
+      console.log(deleteResponse.data);
+
+      Toast.show({
+        type: "success",
+        text1: "Product deleted!",
+      });
+    } catch (error) {
+      Toast.show({
+        type: "error",
+        text1: "An error has occured...",
+      });
+      console.log(error);
+
+      // Revert to the old product list if the delete fails
+      setProducts(oldProducts);
+    }
+  };
+
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
   }
 
   return (
@@ -78,8 +145,8 @@ function ProductScreen() {
         </DataTable.Header>
 
         {/* Rows */}
-        {filteredProducts.slice(from, to).map((product, index) => (
-          <DataTable.Row key={index} style={styles.row}>
+        {filteredProducts.slice(from, to).map((product) => (
+          <DataTable.Row key={product.product_id} style={styles.row}>
             <DataTable.Cell style={styles.productNameColumn}>
               {product.product_name}
             </DataTable.Cell>
@@ -88,7 +155,7 @@ function ProductScreen() {
             </DataTable.Cell>
             <DataTable.Cell style={styles.actionColumn}>
               <Pressable
-                onPress={() => handleDelete(product)}
+                onPress={() => handleDelete(product?.product_id)}
                 style={({ pressed }) => [
                   styles.removeButton,
                   { opacity: pressed ? 0.7 : 1 },
@@ -136,6 +203,11 @@ const styles = StyleSheet.create({
     borderTopLeftRadius: 10,
     borderTopRightRadius: 10,
     overflow: "hidden",
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
   headerText: {
     fontSize: 16,

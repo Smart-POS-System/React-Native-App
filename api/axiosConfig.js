@@ -1,9 +1,10 @@
 import axios from "axios";
 import { PORT } from "../helpers/port";
 import AsyncStorage from "@react-native-async-storage/async-storage";
+import { IP } from "../helpers/ip";
 
 const axiosInstance = axios.create({
-  baseURL: `http://192.168.183.102:${PORT}/api/v1`,
+  baseURL: `http://${IP}:${PORT}/api/v1`,
   headers: {
     "Content-Type": "application/json",
   },
@@ -29,7 +30,7 @@ axiosInstance.interceptors.request.use(
 export default axiosInstance;
 
 export const formDataAxios = axios.create({
-  baseURL: `http://192.168.183.102:${PORT}/api/v1`,
+  baseURL: `http://${IP}:${PORT}/api/v1`,
   headers: {
     "Content-Type": "multipart/form-data",
   },

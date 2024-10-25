@@ -1,20 +1,22 @@
 // File path: components/SalesChart.js
 
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { LineChart } from "react-native-chart-kit";
 import { Dimensions, View, Text, StyleSheet } from "react-native";
 import { SegmentedButtons } from "react-native-paper";
+import { IP } from "../helpers/ip";
+import axiosInstance from "../api/axiosConfig";
 
 // Sales and Purchases data
-export const sales = [
-  { date: "2024-08-31", amount: 450 },
-  { date: "2024-09-01", amount: 134 },
-  { date: "2024-09-02", amount: 401 },
-  { date: "2024-09-03", amount: 0 },
-  { date: "2024-09-04", amount: 410 },
-  { date: "2024-09-05", amount: 0 },
-  { date: "2024-09-06", amount: 314 },
-];
+// export const sales = [
+//   { date: "2024-08-31", amount: 450 },
+//   { date: "2024-09-01", amount: 134 },
+//   { date: "2024-09-02", amount: 401 },
+//   { date: "2024-09-03", amount: 0 },
+//   { date: "2024-09-04", amount: 410 },
+//   { date: "2024-09-05", amount: 0 },
+//   { date: "2024-09-06", amount: 314 },
+// ];
 
 export const purchases = [
   { date: "2024-08-31", amount: 122 },
@@ -30,38 +32,52 @@ export const purchases = [
 const formatDate = (dateString) => {
   const date = new Date(dateString);
   return new Intl.DateTimeFormat("en-US", {
+    year: "numeric",
     month: "short",
     day: "2-digit",
   }).format(date);
 };
 
-const SalesChart = () => {
+const SalesChart = ({ startDate, endDate }) => {
   // State to track whether "sales" or "purchases" is selected
   const [selectedData, setSelectedData] = useState("sales");
-  const [tooltip, setTooltip] = useState(null);
+  const [sales, setSales] = useState([]);
+  const [loading, setLoading] = useState(true);
   const [pointerX, setPointerX] = useState(null);
   const [pointerY, setPointerY] = useState(null);
 
-  // Full labels array for tooltip purposes
-  const fullLabels = (selectedData === "sales" ? sales : purchases).map(
-    (item) => formatDate(item.date)
-  );
+  useEffect(() => {
+    console.log("Start Date: ", startDate);
+    console.log("End Date: ", endDate);
+
+    const fetchSalesData = async () => {
+      setLoading(true);
+      try {
+        const salesDataResponse = await axiosInstance.get(
+          `http://${IP}:49164/daily-total-sales?startDate=${startDate}&endDate=${endDate}`
+        );
+
+        setSales(salesDataResponse.data);
+      } catch (error) {
+        console.log(error);
+      } finally {
+        setLoading(false);
+        console.log(sales);
+      }
+    };
+
+    fetchSalesData();
+  }, [startDate, endDate]);
 
   // Extract labels (formatted dates) and data (amounts) from selected data
   const selectedDataset = selectedData === "sales" ? sales : purchases;
 
   // Use reduced labels to show on the x-axis
   const labels = selectedDataset.map(
-    (item, index) => (index % 2 === 0 ? formatDate(item.date) : "") // Show every second date, increase this gap as needed
+    (item, index) => (index % 50 === 0 ? formatDate(item.date) : "") // Show every hundredth date, increase this gap as needed
   );
 
   const data = selectedDataset.map((item) => item.amount);
-
-  const handleDataPointClick = (data) => {
-    setTooltip({ value: data.value, label: fullLabels[data.index] });
-    setPointerX(data.x); // Set the x-coordinate of the pointer
-    setPointerY(data.y); // Set the y-coordinate of the pointer
-  };
 
   return (
     <View>
@@ -89,26 +105,6 @@ const SalesChart = () => {
         />
       </View>
 
-      {/* Tooltip */}
-      {tooltip && (
-        <View
-          style={[
-            styles.tooltip,
-            {
-              left: pointerX - 50,
-              top: pointerY + 30,
-              backgroundColor:
-                selectedData === "sales"
-                  ? "rgba(25, 166, 243, 0.7)"
-                  : "rgba(255, 99, 132, 0.7)",
-            },
-          ]}
-        >
-          <Text>{`Date: ${tooltip.label}`}</Text>
-          <Text>{`Amount: Rs. ${tooltip.value}`}</Text>
-        </View>
-      )}
-
       <LineChart
         data={{
           labels: labels, // Reduced labels for x-axis with increased gap
@@ -127,7 +123,7 @@ const SalesChart = () => {
         height={220} // Height of the chart
         // Y-axis labels remain the same
         // yAxisSuffix=" Rs."
-        yAxisInterval={1} // Defines the interval between Y-axis labels
+        yAxisInterval={5000} // Defines the interval between Y-axis labels
         chartConfig={{
           backgroundColor: "#ffffff", // Neutral background color
           backgroundGradientFrom: "#ffffff", // No background gradient
@@ -139,9 +135,7 @@ const SalesChart = () => {
             borderRadius: 16,
           },
           propsForDots: {
-            r: "6",
-            strokeWidth: "2",
-            stroke: "#ffffff",
+            r: "0",
           },
           fillShadowGradient: selectedData === "sales" ? "#3b9eff" : "#ff6384",
           fillShadowGradientTo:
@@ -157,7 +151,6 @@ const SalesChart = () => {
         withHorizontalLines={true}
         withVerticalLines={true}
         fromZero={true}
-        onDataPointClick={handleDataPointClick}
       />
 
       {/* Axis Labels */}
@@ -189,13 +182,6 @@ const styles = StyleSheet.create({
     alignItems: "center",
 
     width: "100%", // Full width
-  },
-  tooltip: {
-    position: "absolute",
-    padding: 10,
-    borderRadius: 5,
-    zIndex: 100,
-    color: "#fff",
   },
   // pointer: {
   //   position: "absolute",

@@ -1,4 +1,4 @@
-import React, { useState } from "react";
+import React, { useEffect, useState } from "react";
 import { View, FlatList, StyleSheet } from "react-native";
 import {
   Card,
@@ -12,49 +12,49 @@ import {
   Dialog,
   Portal,
   Provider,
+  ActivityIndicator,
 } from "react-native-paper";
 import { Ionicons } from "@expo/vector-icons";
 import { useTheme } from "react-native-paper";
-import { items } from "../helpers/list";
 import { useNavigation } from "@react-navigation/native";
+import { useAuthentication } from "../contexts/authContext";
+import axiosInstance from "../api/axiosConfig";
+import { IP } from "../helpers/ip";
 
 function ItemsScreen() {
   const [searchQuery, setSearchQuery] = useState("");
-  const [filteredItems, setFilteredItems] = useState(items);
-  const [visible, setVisible] = useState(false);
-  const [selectedBatch, setSelectedBatch] = useState(null);
+  const [items, setItems] = useState([]);
+  const [loading, setLoading] = useState(true);
   const navigation = useNavigation();
   const theme = useTheme();
+  const { isUpdated } = useAuthentication();
 
-  const handleSearch = (query) => {
-    setSearchQuery(query);
-    if (query === "") {
-      setFilteredItems(items);
-    } else {
-      const filteredData = items.filter(
-        (item) =>
-          item.product_name.toLowerCase().includes(query.toLowerCase()) ||
-          item.batch_number.toString().includes(query)
-      );
-      setFilteredItems(filteredData);
-    }
-  };
+  useEffect(() => {
+    const fetchItems = async () => {
+      setLoading(true);
+      try {
+        const itemsResponse = await axiosInstance.get(
+          `http://${IP}:49160/items`
+        );
+        setItems(itemsResponse.data);
+        console.log(itemsResponse.data);
+      } catch (error) {
+        console.log(error);
+      } finally {
+        setLoading(false);
+      }
+    };
 
-  const showDialog = (batchNumber) => {
-    setSelectedBatch(batchNumber); // Store the batch number of the selected item
-    setVisible(true); // Show the dialog
-  };
+    fetchItems();
+  }, [isUpdated]);
 
-  const hideDialog = () => {
-    setVisible(false); // Hide the dialog
-  };
+  const filteredItems = items.filter((item) =>
+    item.product.product_name.toLowerCase().includes(searchQuery.toLowerCase())
+  );
 
-  const handleRemove = () => {
-    const updatedItems = filteredItems.filter(
-      (item) => item.batch_number !== selectedBatch
-    );
-    setFilteredItems(updatedItems);
-    setVisible(false);
+  const handleRemove = (itemId) => {
+    const updatedItems = items.filter((item) => item.item_id !== itemId);
+    setItems(updatedItems); // Update the main items state
   };
 
   const renderProductItem = ({ item }) => (
@@ -68,12 +68,12 @@ function ItemsScreen() {
           />
           <View style={styles.info}>
             <Title style={{ fontSize: 18, fontWeight: "bold" }}>
-              {item.product_name}
+              {item?.product?.product_name}
             </Title>
             <View style={styles.inline}>
               <Ionicons name="document-text-outline" size={16} color="black" />
               <Paragraph style={styles.paragraph}>
-                Batch Number: {item.batch_number}
+                Batch Number: {item?.batch_no}
               </Paragraph>
             </View>
           </View>
@@ -82,28 +82,28 @@ function ItemsScreen() {
         <View style={styles.inline}>
           <Ionicons name="pricetag-outline" size={16} color="black" />
           <Paragraph style={styles.paragraph}>
-            Buying Price: Rs. {item.buying_price.toFixed(2)}
+            Buying Price: Rs. {parseFloat(item?.buying_price)?.toFixed(2)}
           </Paragraph>
         </View>
 
         <View style={styles.inline}>
           <Ionicons name="cart-outline" size={16} color="black" />
           <Paragraph style={styles.paragraph}>
-            Selling Price: Rs. {item.selling_price.toFixed(2)}
+            Selling Price: Rs. {parseFloat(item?.selling_price)?.toFixed(2)}
           </Paragraph>
         </View>
 
         <View style={styles.inline}>
           <Ionicons name="calendar-outline" size={16} color="black" />
           <Paragraph style={styles.paragraph}>
-            Manufactured Date: {item.manufactured_date}
+            Manufactured Date: {item?.mfd}
           </Paragraph>
         </View>
 
         <View style={styles.inline}>
           <Ionicons name="time-outline" size={16} color="black" />
           <Paragraph style={styles.paragraph}>
-            Expiring Date: {item.expiring_date}
+            Expiring Date: {item?.exp}
           </Paragraph>
         </View>
 
@@ -114,16 +114,14 @@ function ItemsScreen() {
             style={{
               marginRight: 5,
               backgroundColor:
-                new Date(item.expiring_date) > new Date()
-                  ? "#43e031"
-                  : "#e04343",
+                new Date(item?.exp) > new Date() ? "#43e031" : "#e04343",
             }}
           >
-            {new Date(item.expiring_date) > new Date() ? "In Stock" : "Expired"}
+            {new Date(item?.exp) > new Date() ? "In Stock" : "Expired"}
           </Chip>
           <Button
             mode="contained"
-            onPress={() => showDialog(item.batch_number)} // Show dialog on button press
+            onPress={() => handleRemove(item?.item_id)} // Show dialog on button press
             icon="delete"
             style={styles.removeButton}
             compact
@@ -135,6 +133,14 @@ function ItemsScreen() {
     </Card>
   );
 
+  if (loading) {
+    return (
+      <View style={styles.loadingContainer}>
+        <ActivityIndicator size="large" />
+      </View>
+    );
+  }
+
   return (
     <Provider>
       <View style={styles.container}>
@@ -143,7 +149,7 @@ function ItemsScreen() {
         {/* Search Bar */}
         <TextInput
           value={searchQuery}
-          onChangeText={handleSearch}
+          onChangeText={setSearchQuery}
           style={styles.searchInput}
           mode="outlined"
           placeholder="Search by product name or batch number"
@@ -162,31 +168,12 @@ function ItemsScreen() {
           </Button>
         </View>
 
-        {/* Product List */}
         <FlatList
           data={filteredItems}
           renderItem={renderProductItem}
-          keyExtractor={(item, index) => item.batch_number.toString()}
+          keyExtractor={(item) => item?.item_id}
           contentContainerStyle={styles.list}
         />
-
-        {/* Confirmation Dialog */}
-        <Portal>
-          <Dialog visible={visible} onDismiss={hideDialog}>
-            <Dialog.Title style={{ fontSize: 20, fontWeight: "bold" }}>
-              Confirm Removal
-            </Dialog.Title>
-            <Dialog.Content>
-              <Paragraph style={{ fontSize: 16 }}>
-                Are you sure you want to remove this item?
-              </Paragraph>
-            </Dialog.Content>
-            <Dialog.Actions>
-              <Button onPress={hideDialog}>Cancel</Button>
-              <Button onPress={handleRemove}>Remove</Button>
-            </Dialog.Actions>
-          </Dialog>
-        </Portal>
       </View>
     </Provider>
   );
@@ -203,6 +190,11 @@ const styles = StyleSheet.create({
     marginBottom: 20,
     height: 40,
     fontSize: 12,
+  },
+  loadingContainer: {
+    flex: 1,
+    justifyContent: "center",
+    alignItems: "center",
   },
   list: {
     paddingBottom: 20,

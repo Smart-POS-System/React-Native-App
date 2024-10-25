@@ -12,12 +12,16 @@ import {
 } from "react-native-paper";
 import { DateTimePickerAndroid } from "@react-native-community/datetimepicker";
 import { ProductNames } from "../helpers/list";
+import { useAuthentication } from "../contexts/authContext";
+import axiosInstance from "../api/axiosConfig";
+import { IP } from "../helpers/ip";
 
 function AddItems() {
   const theme = useTheme();
   const [loading, setLoading] = useState(false);
   const [selectedProduct, setSelectedProduct] = useState("");
   const [showMenu, setShowMenu] = useState(false);
+  const { setIsUpdated } = useAuthentication();
 
   const {
     control,
@@ -35,17 +39,64 @@ function AddItems() {
     },
   });
 
-  const onSubmit = (data) => {
-    console.log("New Item Data:", { ...data, product: selectedProduct });
-    setLoading(true);
+  async function onSubmit(data) {
+    setLoading(true); // Set loading state to true
+    console.log("data", data);
 
-    // Simulate API call or async logic
-    setTimeout(() => {
-      console.log("Item Added Successfully");
-      setLoading(false);
-      handleClear(); // Reset form after successful submission
-    }, 1000);
-  };
+    Toast.show({
+      type: "info",
+      text1: "Adding item...",
+      visibilityTime: 3000,
+      autoHide: false, // Keep it until the process is done
+    });
+
+    try {
+      const formData = new FormData();
+
+      const formattedMFD = data?.mfdExp[0]?.toISOString().slice(0, 10);
+      const formattedEXP = data?.mfdExp[1]?.toISOString().slice(0, 10);
+
+      formData.append("product_id", data?.product_id);
+      formData.append("buying_price", data?.buying_price);
+      formData.append("selling_price", data?.selling_price);
+      formData.append("mfd", formattedMFD);
+      formData.append("exp", formattedEXP);
+
+      if (data?.batch_no) {
+        formData.append("batch_no", data.batch_no);
+      }
+
+      const savePromise = await axiosInstance({
+        method: "post",
+        url: `http://${IP}:49160/items`,
+        data: formData,
+        headers: {
+          "Content-Type": "multipart/form-data",
+        },
+        withCredentials: true,
+      });
+
+      setIsUpdated((value) => !value);
+
+      Toast.show({
+        type: "success",
+        text1: "New item added!",
+      });
+
+      reset({
+        productName: "", // Reset with correct field names
+        unitWeight: "",
+      });
+    } catch (error) {
+      Toast.show({
+        type: "error",
+        text1: "Couldn't add item...",
+      });
+      console.log(error);
+    } finally {
+      setLoading(false); // Set loading state to false after submission
+    }
+  }
 
   const handleClear = () => {
     reset();
