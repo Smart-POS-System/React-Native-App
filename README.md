@@ -13,7 +13,6 @@ This repository contains the mobile application code for the **Smart Point of Sa
 
 ## 🛠️ Tech Stack
 - 🟦 **React Native** – Mobile app development
-- ⚛️ **Redux** – State management
 - 📡 **Axios** – API integration
 - 🚦 **React Navigation** – App navigation
 - 🎨 **Tailwind CSS** – Customizable UI styling
